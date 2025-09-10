@@ -1,0 +1,121 @@
+name: 编译 ImmortalWrt 插件（上传 Artifact）
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "目标平台/架构"
+        required: true
+        default: "mediatek/filogic"
+      firmware_version:
+        description: "固件版本"
+        required: true
+        default: "24.10.2"
+
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v2
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ccache ecj fastjar file g++ gawk \
+          gettext git java-propose-classpath libelf-dev libncurses5-dev \
+          libncursesw5-dev libssl-dev python3 python3-distutils python3-setuptools \
+          unzip wget rsync subversion swig time xsltproc zlib1g-dev tree zstd
+
+      - name: 设置 Python 软链接
+        run: |
+          sudo ln -sf /usr/bin/python3 /usr/bin/python
+
+      - name: 设置目标变量
+        id: set_target
+        run: |
+          echo "TARGET_DASH=$(echo ${{ github.event.inputs.target }} | sed 's/\//-/')" >> $GITHUB_OUTPUT
+
+      - name: 下载并解压 ImmortalWrt 源码
+        run: |
+          SDK_BASE_URL="https://mirror.nju.edu.cn/immortalwrt/releases/${{ github.event.inputs.firmware_version }}/targets/${{ github.event.inputs.target }}/"
+          SDK_FILE=$(curl -s $SDK_BASE_URL | grep -oP 'immortalwrt-sdk-.*?-${{ steps.set_target.outputs.TARGET_DASH }}_gcc-.*?Linux-x86_64.tar.zst' | head -n 1)
+          if [ -z "$SDK_FILE" ]; then
+            echo "无法找到匹配的 SDK 文件"
+            exit 1
+          fi
+          SDK_URL="${SDK_BASE_URL}${SDK_FILE}"
+          echo "下载 SDK：$SDK_URL"
+          wget $SDK_URL -O immortalwrt.tar.zst
+          mkdir immortalwrt
+          tar -I zstd -xvf immortalwrt.tar.zst -C immortalwrt --strip-components 1
+
+      - name: 检查 SDK 下载
+        run: |
+          if [ ! -f immortalwrt.tar.zst ]; then
+            echo "SDK 下载失败"
+            exit 1
+          fi
+
+ 	  - name: 复制插件到 SDK
+		run: |
+		  cp -r ./package/openclash-guard immortalwrt/package/openclash-guard
+
+		  chmod +x .github/scripts/get_plugin_info.sh
+		  .github/scripts/get_plugin_info.sh
+
+      - name: 更新 feeds
+        working-directory: immortalwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: 检查工作目录
+        working-directory: immortalwrt
+        run: |
+          pwd
+          ls -la
+
+      - name: 配置 ImmortalWrt
+        working-directory: immortalwrt
+        run: |
+          # TARGET=$(echo "${{ github.event.inputs.target }}" | sed 's/\//\\\//g')
+          # echo "CONFIG_TARGET_${TARGET%/*}=y" > .config
+          # echo "CONFIG_TARGET_${TARGET%/*}_${TARGET#*/}=y" >> .config
+
+          echo "CONFIG_PACKAGE_openclash-guard=m" >> .config
+          make defconfig
+
+      - name: 编译插件
+        working-directory: immortalwrt
+        run: |
+          make package/openclash-guard/compile V=s -j$(nproc)
+
+      - name: 整理文件
+        run: |
+          mkdir -p firmware
+          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk" | xargs -I {} mv {} firmware/
+          cd firmware
+		  ls *.ipk || echo "没有找到 .ipk 文件"
+          for file in *.ipk; do
+            mv "$file" "${{ steps.set_target.outputs.TARGET_DASH }}-${{ github.event.inputs.firmware_version }}-${{ env.PLUGIN_NAME }}-${{ env.PLUGIN_VERSION }}.ipk"
+          done
+          echo "生成的文件列表:"
+          ls -l
+
+      - name: 上传 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set_target.outputs.TARGET_DASH }}-${{ github.event.inputs.firmware_version }}-${{ env.PLUGIN_NAME }}-${{ env.PLUGIN_VERSION }}
+          path: firmware/*
+
+      - name: 创建作业摘要
+        run: |
+          echo "目标平台/架构：${{ github.event.inputs.target }}" >> $GITHUB_STEP_SUMMARY
+          echo "固件版本：${{ github.event.inputs.firmware_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "插件版本：${{ env.PLUGIN_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "生成的文件列表：" >> $GITHUB_STEP_SUMMARY
+          ls -l firmware/* >> $GITHUB_STEP_SUMMARY
