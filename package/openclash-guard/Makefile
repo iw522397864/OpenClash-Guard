@@ -15,12 +15,10 @@ define Package/openclash-guard
 endef
 
 define Package/openclash-guard/install
-    # 安装脚本到 /root
     $(INSTALL_DIR) $(1)/root
     $(INSTALL_BIN) ./files/root/openclash_watchdog.sh $(1)/root/openclash_watchdog.sh
     $(INSTALL_BIN) ./files/root/openclash_launcher.sh $(1)/root/openclash_launcher.sh
 
-    # 安装 LuCI 控制器
     $(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
     $(INSTALL_DATA) ./files/usr/lib/lua/luci/controller/openclash_custom.lua $(1)/usr/lib/lua/luci/controller/openclash_custom.lua
 endef
