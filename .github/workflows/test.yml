@@ -1,0 +1,11 @@
+name: 测试触发器
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 打印信息
+        run: echo "这是一个测试 workflow"
