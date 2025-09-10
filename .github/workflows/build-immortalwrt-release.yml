@@ -97,8 +97,9 @@ jobs:
       - name: 整理文件
         run: |
           mkdir -p firmware
-          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk"
+          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk" | xargs -I {} mv {} firmware/
           cd firmware
+		  ls *.ipk || echo "没有找到 .ipk 文件"
           for file in *.ipk; do
             mv "$file" "${{ steps.set_target.outputs.TARGET_DASH }}-${{ github.event.inputs.firmware_version }}-${{ env.PLUGIN_NAME }}-${{ env.PLUGIN_VERSION }}.ipk"
           done
@@ -114,7 +115,6 @@ jobs:
           body: |
             目标平台/架构：${{ github.event.inputs.target }}
             固件版本：${{ github.event.inputs.firmware_version }}
-            插件源码地址：${{ github.event.inputs.plugin_source }}
             插件版本：${{ env.PLUGIN_VERSION }}
 
             这个 Release 包含了编译好的 ImmortalWrt 插件。
