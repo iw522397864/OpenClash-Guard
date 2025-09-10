@@ -1,0 +1,2 @@
+# OpenClash_Guard
+一个用于OpenClash启动失败时自动尝试重启的脚本
