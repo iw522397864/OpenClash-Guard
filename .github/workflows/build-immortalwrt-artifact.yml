@@ -96,7 +96,7 @@ jobs:
       - name: 整理文件
         run: |
           mkdir -p firmware
-          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk"
+          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk" | xargs -I {} mv {} firmware/
           cd firmware
           for file in *.ipk; do
             mv "$file" "${{ steps.set_target.outputs.TARGET_DASH }}-${{ github.event.inputs.firmware_version }}-${{ env.PLUGIN_NAME }}-${{ env.PLUGIN_VERSION }}.ipk"
@@ -114,7 +114,6 @@ jobs:
         run: |
           echo "目标平台/架构：${{ github.event.inputs.target }}" >> $GITHUB_STEP_SUMMARY
           echo "固件版本：${{ github.event.inputs.firmware_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "插件源码地址：${{ github.event.inputs.plugin_source }}" >> $GITHUB_STEP_SUMMARY
           echo "插件版本：${{ env.PLUGIN_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "生成的文件列表：" >> $GITHUB_STEP_SUMMARY
