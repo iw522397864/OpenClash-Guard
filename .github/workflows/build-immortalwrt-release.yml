@@ -6,15 +6,12 @@ on:
       target:
         description: "目标平台/架构"
         required: true
-        default: "bcm27xx/bcm2711"
+        default: "mediatek/filogic"
       firmware_version:
         description: "固件版本"
         required: true
-        default: "24.10.0"
-      plugin_source:
-        description: "插件源码地址"
-        required: true
-        default: "https://github.com/sirpdboy/luci-app-netwizard.git"
+        default: "24.10.2"
+
 
 jobs:
   build:
@@ -62,14 +59,13 @@ jobs:
             exit 1
           fi
 
-      - name: 克隆插件源码
-        working-directory: immortalwrt/package
-        run: |
-          git clone ${{ github.event.inputs.plugin_source }} plugin
-          cd plugin
+	  - name: 复制插件到 SDK
+		run: |
+		  cp -r ./package/openclash-guard immortalwrt/package/openclash-guard
 
-          chmod +x $GITHUB_WORKSPACE/.github/scripts/get_plugin_info.sh
-          $GITHUB_WORKSPACE/.github/scripts/get_plugin_info.sh
+		  chmod +x .github/scripts/get_plugin_info.sh
+		  .github/scripts/get_plugin_info.sh
+
 
       - name: 更新 feeds
         working-directory: immortalwrt
@@ -90,18 +86,18 @@ jobs:
           # echo "CONFIG_TARGET_${TARGET%/*}=y" > .config
           # echo "CONFIG_TARGET_${TARGET%/*}_${TARGET#*/}=y" >> .config
 
-          echo "CONFIG_PACKAGE_plugin=m" >> .config
+          echo "CONFIG_PACKAGE_openclash-guard=m" >> .config
           make defconfig
 
       - name: 编译插件
         working-directory: immortalwrt
         run: |
-          make package/plugin/compile V=s -j$(nproc)
+          make package/openclash-guard/compile V=s -j$(nproc)
 
       - name: 整理文件
         run: |
           mkdir -p firmware
-          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk" | xargs -I {} mv {} firmware/
+          find immortalwrt/bin/packages/ -name "${{ env.PLUGIN_NAME }}*.ipk"
           cd firmware
           for file in *.ipk; do
             mv "$file" "${{ steps.set_target.outputs.TARGET_DASH }}-${{ github.event.inputs.firmware_version }}-${{ env.PLUGIN_NAME }}-${{ env.PLUGIN_VERSION }}.ipk"
