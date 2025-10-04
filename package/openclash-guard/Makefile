@@ -28,7 +28,7 @@ define Package/openclash-guard/install
 
 	# ✅ [新增] 安装 init.d 启动脚本（用于 watchdog 服务控制）
 	$(INSTALL_DIR) $(1)/etc/init.d/openclash
-	$(INSTALL_BIN) ./files/etc/init.d/openclash_watchdog $(1)/etc/init.d/openclash/openclash_watchdog
+	# $(INSTALL_BIN) ./files/etc/init.d/openclash_watchdog $(1)/etc/init.d/openclash/openclash_watchdog
 endef
 
 define Package/openclash-guard/postinst
@@ -74,3 +74,4 @@ define Build/Compile
 endef
 
 $(eval $(call BuildPackage,openclash-guard))
+
